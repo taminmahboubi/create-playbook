@@ -96,3 +96,17 @@ echo -e "Playbook [${LIGHT_GREEN}$filename.yml${NC}]: "
 cat $filename.yml
 ```
 
+5. Next, we want to make sure that the user has specified the correct sudo privileges (chosen either 'yes' or 'no'):
+    - we'll use a while loop, to keep looping until **yes** or **no** is inputted, otherwise give a error type response.
+```bash
+    echo -e "${LIGHT_GREEN}Grant sudo privilages?${NC}: "
+    while true; do
+        read -p "Enter yes or no: " sudo_privileges
+
+        if [[ "$sudo_privileges" == "yes" || "$sudo_privileges" == "no" ]]; then
+            break
+        else
+            echo -e "${LIGHT_RED}Answer must be yes or no!${NC}"
+        fi
+    done
+```
