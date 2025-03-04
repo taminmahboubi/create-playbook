@@ -110,3 +110,106 @@ cat $filename.yml
         fi
     done
 ```
+
+6. Next, I want the script to check if there is an `inventory`/`inventory.ini` file, if there is, to list the hosts from that file, allowing the user to select from them.
+`inventory` files are typically written like:
+```
+[web_servers]
+192.168.1.10
+192.168.1.11
+
+[db_servers]
+192.168.1.20
+
+[app_servers]
+192.168.1.30 ansible_user=myuser
+```
+
+- I can use `grep "\[.*\]" inventory` find the group(s) within an inventory file.
+- Create an empty array to store the groups within the inventory file: `inventory_array=()`
+- then create a function to check if the inventory file exists, if it does, add the list of inventories in the command into the array using a "while read loop":
+
+```bash
+check_inventory() {
+    if [ -f "$inventory_file" ]; then
+        echo "inventory file EXISTS:"
+
+        while IFS= read -r line; do
+            inventory_array+=("$line")
+        done <<<"$inventory_list"
+
+        for i in "${inventory_array[@]}"; do
+            echo "$i"
+        done
+    else
+        echo "NO INVENTORY FILE"
+    fi
+}
+```
+**Output:**
+
+```
+inventory file EXISTS:
+[web_servers]
+[db_servers]
+[app_servers]
+```
+
+
+I've also added an **Associative Array**, this is an array where you can use names (keys) to find values, not just numbers.
+The Associative Array will help me to select a group from the inventory file, based on a key, allowing the user of the script to manually select which group(s) they want.
+
+*UPDATED CODE:*
+```bash
+check_inventory() {
+
+    value=$1
+
+    if [ -f "$inventory_file" ]; then
+        echo "inventory file EXISTS:"
+
+        while IFS= read -r line; do
+            inventory_array+=("$line")
+        done <<<"$inventory_list"
+
+        declare -A group_index
+        index=1
+        for i in "${inventory_array[@]}"; do
+            echo -e "($index) [${LIGHT_GREEN}$i${NC}]"
+            group_index["$index"]="$i"
+            ((index++))
+        done
+
+        
+        read -p "Select a group: " group_num
+        for i in "${!group_index[@]}"; do
+            if [[ "$group_num" == "$i" ]]; then
+                echo -e "you have selected [${LIGHT_GREEN}${group_index[$group_num]}${NC}]"
+
+                break
+            elif [[ "$group_num" -gt "${#group_index[@]}" || ! "$group_num" =~ ^[0-9]+$ ]]; then
+                echo "That is not a valid number!"
+                break
+            fi
+        done
+            
+    else
+        echo "NO INVENTORY FILE"
+    fi
+}
+```
+**Output:**
+```
+inventory file EXISTS:
+(1) [web_servers]
+(2) [db_servers]
+(3) [app_servers]
+Select a group: 2
+you have selected [db_servers]
+```
+
+A check is also implemented to see if the user has entered a number higher than the number of groups in the *inventory* file, or if they pressed another key on the keyboard:
+```bash
+elif [[ "$group_num" -gt "${#group_index[@]}" || ! "$group_num" =~ ^[0-9]+$ ]]; then
+```
+
