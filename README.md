@@ -213,3 +213,20 @@ A check is also implemented to see if the user has entered a number higher than 
 elif [[ "$group_num" -gt "${#group_index[@]}" || ! "$group_num" =~ ^[0-9]+$ ]]; then
 ```
 
+This is a good start, however I want to be able to:
+- Select multiple groups
+    - send confirmation of the group(s) selected
+    - removing the selected group from the list
+    - reordering the group
+    - asking the user if they wish to choose any other group or 'exit'
+        - if yes, repeat the process
+        - if no, send the selected group(s)
+        - if all groups are selected, send them all 
+
+The Associative array will print the values in reverse order to what I want, so, I'll use `printf "%s\n" "${!group_index[@]}" | sort -n`:
+    - `printf` lets us control how text and numbers are displayed (insert special characters, control decimal places, etc.)
+    - `"%s"` tells `printf` to treat the next argument as a string
+    - `"\n"` moves the cursor to the next line
+    - `sort -n` *sort* sorts the lines of text, *-n* treats the lines as numbers and sorts them in numerical order.
+We'll also use `if [[ -v group_index[$id] ]]` to check if a variable exists.
+

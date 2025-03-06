@@ -1,0 +1,4 @@
+---
+- name: some_playbook
+  hosts: web_servers app_servers 
+  become: yes
