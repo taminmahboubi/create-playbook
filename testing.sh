@@ -46,65 +46,108 @@
 #     # echo -e "  become: $sudo_privileges" >> $filename.yml
 # }
 
+#!/bin/bash
+LIGHT_GREEN='\033[92m'
+LIGHT_RED='\033[91m'
+LGB='\e[102m'
+NC='\033[0m'
+
+aptlist=$(ansible-doc apt | grep '^-\s' | grep -v 'name:' | cut -d ' ' -f 2)
+
+
+# Check if fzf is installed
+if ! command -v fzf &> /dev/null; then
+    echo -e "${LIGHT_RED}fzf is not installed.{$NC} Installing now..."
+
+    # Detect package manager and install fzf
+    if [[ -f /etc/debian_version ]]; then
+        sudo apt update && sudo apt install -y fzf
+    elif [[ -f /etc/redhat-release ]]; then
+        sudo yum install -y fzf
+    elif command -v pacman &> /dev/null; then
+        sudo pacman -S --noconfirm fzf
+    elif command -v brew &> /dev/null; then
+        brew install fzf
+    else
+        echo "Unsupported system. Please install fzf manually."
+        exit 1
+    fi
+
+    echo -e "${LIGHT_GREEN}fzf installed successfully!${NC}"
+else
+    echo -e "${LGB}fzf is already installed${NC}"
+fi
 
 # create_play
 echo "Select one:"
 
 
-#!/bin/bash
-
-LIGHT_GREEN='\033[92m'
-LIGHT_RED='\033[91m'
-NC='\033[0m'
-
-# Define options (including "Exit" as the last option)
-options=("name" "apt" "doc" "Done")
-selected_options=()
-
-while true; do
-
-    # change the colour of the option
-
-    # Show fzf with multi-selection enabled
-    selection=$(printf "%s\n" "${options[@]}" | fzf --height 6 --border --reverse --multi --no-info)
-    
 
 
-    if [[ -n "$selection" && "$selection" != "Done" ]]; then
-         # check each selected item
-        for item in $selection; do
-            already_selected=false
 
-            for selected in "${selected_options[@]}"; do
-                if [[ "$selected" == "$item" ]]; then
-                    already_selected=true
-                    break
+new_array=()
+
+select_task() {
+    local arr_name="$1"
+    local -n options="$arr_name"
+
+    options+=("Done")
+    selected_options=()
+
+    while true; do
+
+        # change the colour of the option
+
+        # Show fzf with multi-selection enabled
+        selection=$(printf "%s\n" "${options[@]}" | fzf --height 10 --border --reverse --multi --no-info)
+        
+
+
+        if [[ -n "$selection" && "$selection" != "Done" ]]; then
+            # check each selected item
+            for item in $selection; do
+                already_selected=false
+
+                for selected in "${selected_options[@]}"; do
+                    if [[ "$selected" == "$item" ]]; then
+                        already_selected=true
+                        break
+                    fi
+                done
+
+                if $already_selected; then
+                    echo -e "${LIGHT_RED}Error: '$item' is already selected!${NC}"
+                    continue
+                else
+                    selected_options+=("$item")
+                    echo -e "You selected: ${LIGHT_GREEN}$item${NC}"
+                    continue
                 fi
+
             done
+        elif [[ "${#selected_options[@]}" -eq 0 && "$selection" == "Done" ]]; then
+            echo -e "${LIGHT_RED}Error: you must choose at least one!${NC}"
+            continue
+        elif [[ "$selection" == *"Done"* ]]; then # If "Exit" is selected, break the loop
+            echo "Selected:"
 
-            if $already_selected; then
-                echo -e "${LIGHT_RED}Error: '$item' is already selected!${NC}"
-                continue
-            else
-                selected_options+=("$item")
-                echo -e "You selected: ${LIGHT_GREEN}$item${NC}"
-                continue
-            fi
+            for i in "${selected_options[@]}"; do
+                echo -e "${LIGHT_GREEN}$i${NC}"
+                new_array+=("$i")
+            done
+             
+            break
+        fi
+    done
+   
+}
 
-        done
-    elif [[ "${#selected_options[@]}" -eq 0 && "$selection" == "Done" ]]; then
-        echo -e "${LIGHT_RED}Error: you must choose at least one!${NC}"
-        continue
-    elif [[ "$selection" == *"Done"* ]]; then # If "Exit" is selected, break the loop
-        echo "Selected:"
+my_array=("name" "apt" "service")
+select_task aptlist
 
-        for i in "${selected_options[@]}"; do
-            echo -e "${LIGHT_GREEN}$i${NC}"
-        done
-    
-        break
-    fi
 
+echo "new_array:"
+for i in "${new_array[@]}"; do
+    echo -e "${LIGHT_GREEN}$i${NC}"
 done
-
 
