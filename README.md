@@ -230,3 +230,7 @@ The Associative array will print the values in reverse order to what I want, so,
     - `sort -n` *sort* sorts the lines of text, *-n* treats the lines as numbers and sorts them in numerical order.
 We'll also use `if [[ -v group_index[$id] ]]` to check if a variable exists.
 
+7. Now need to add tasks:
+I will focus on **apt, service, copy, file**:
+using `ansible-doc apt | grep '^-\s' | grep -v 'name:' | cut -d ' ' -f 2` command, to extract all the parameters for that task.
+

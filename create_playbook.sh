@@ -1,9 +1,15 @@
 #!/bin/bash
 
 # ANSI colour codes
+GRAY='\e[90m'
 LIGHT_BLUE='\033[94m'
 LIGHT_GREEN='\033[92m'
 LIGHT_RED='\033[91m'
+LIGHT_GRAY='\e[37m'
+LIGHT_YELLOW='\e[93m'
+BOLD='\e[1m'
+FAINT='\e[2m'
+LGB='\e[102m'
 NC='\033[0m'
 
 inventory_file="inventory"
@@ -12,11 +18,13 @@ reversed_inventory=()
 inventory_array=()
 selected_groups=()
 
-echo -e "Enter filename for ${LIGHT_BLUE}NEW${NC} playbook: "
-read filename
+tasks=("apt" "service" "copy" "file")
+
+echo -e "${LIGHT_GRAY}Enter File Name:${NC} "
+read -p "> " filename
 
 # Create playbook based on 'filename' variable
-touch "$filename".yml
+#touch "$filename".yml
 
 
 declare -A group_index
@@ -24,7 +32,7 @@ index=1
 
 check_inventory() {
     if [ -f "$inventory_file" ]; then
-        echo -e "${LIGHT_GREEN}inventory${NC} file EXISTS"
+        echo -e "[inventory] - ${LIGHT_GREEN}AVAILABLE ●${NC}\n"
 
         mapfile -t inventory_array <<<"$inventory_list"
 
@@ -39,14 +47,16 @@ check_inventory() {
         print_inventory
 
     else
-        echo "NO INVENTORY FILE"
+        echo -e "${LIGHT_RED}NO INVENTORY FILE ○${NC}"
     fi
     declare -g inventory_length=${#group_index[@]}
 }
 
 print_inventory() {
+    echo -e "List of hosts in [inventory] file:"
+
     for key in $(printf "%s\n" "${!group_index[@]}" | sort -n); do
-        echo -e "$key: ${group_index[$key]}"
+        echo -e "$key: ${LIGHT_GREEN}${group_index[$key]}${NC}"
     done
     
     select_group
@@ -89,7 +99,8 @@ select_group() {
         has_groups=false
     else
          while $has_groups; do
-            read -p "Select a group (type 'done' when finished): " group_num
+            echo -e "\nSelect a number:[host] ${FAINT}(type '${BOLD}done${NC}${FAINT}' when finished, or '${BOLD}all${NC}${FAINT}' for all hosts)${NC}: "
+            read -p "> " group_num
 
             if [[ "$group_num" =~ ^[0-9]+$ && -v group_index[$group_num] ]]; then
                 echo -e "You have selected [${LIGHT_GREEN}${group_index[$group_num]}${NC}]"
@@ -98,11 +109,20 @@ select_group() {
                 print_inventory
                 break
             elif [[ "$group_num" == "done" ]]; then
-                echo -e "${LIGHT_GREEN}Done${NC}"
-                send_groups "${group_index[$group_num]}"
+                if [ ${#selected_groups[@]} -eq 0 ]; then
+                    echo -e "${LIGHT_RED}Invalid input, add minumum one host or '${BOLD}all${NC}${LIGHT_RED}'!${NC}"
+                else
+                    echo -e "${LIGHT_GREEN}Added!${NC}"
+                    send_groups "${group_index[$group_num]}"
+                    break
+                fi
+            elif [[ "$group_num" == "all" ]]; then
+                for key in "${!group_index[@]}"; do
+                    send_groups "${group_index[$key]}"
+                done
                 break
             else
-                echo "That is not a valid number!"
+                echo -e "${LIGHT_RED}Invalid input, try again!${NC}"
             fi
         done
     fi
@@ -116,23 +136,30 @@ send_groups() {
     selected_groups+=("$1")
 }
 
+list_tasks() {
+    for item in "${tasks[@]}"; do
+        echo -e "${LIGHT_BLUE}[$item]${NC}"
+    done
+}
+
+
 
 
 
 create_play() {
-    echo -e "${LIGHT_GREEN}Define the playbook ${LIGHT_RED}[name]${NC}: "
-    read play_name
+    echo -e "\n${LIGHT_GRAY}Enter Play ${LIGHT_GREEN}[name]${NC}: "
+    read -p "> " play_name
 
     
-    echo -e "${LIGHT_GREEN}Specify the target group (from inventory)${LIGHT_RED}[hosts]${NC}: "
+    echo -e "\n${LIGHT_GRAY}Enter groups (from inventory)${LIGHT_GREEN}[hosts]${NC}: "
     check_inventory
     hosts_num="${#selected_groups[@]}"
     play_hosts="${selected_groups[@]:0:$hosts_num}"
 
 
-    echo -e "${LIGHT_GREEN}Grant sudo privilages?${NC} ${LIGHT_RED}[become]${NC} : "
+    echo -e "\n${LIGHT_GRAY}Grant sudo privilages? (yes/no)${NC} ${LIGHT_GREEN}[become]${NC} : "
     while true; do
-        read -p "Enter yes or no: " sudo_privileges
+        read -p "> " sudo_privileges
 
         if [[ "$sudo_privileges" == "yes" || "$sudo_privileges" == "no" ]]; then
             break
@@ -140,17 +167,23 @@ create_play() {
             echo -e "${LIGHT_RED}Answer must be yes or no!${NC}"
         fi
     done
-    
 
-    echo -e "---" >> $filename.yml
-    echo -e "- name: $play_name" >> $filename.yml
-    echo -e "  hosts: $play_hosts" >> $filename.yml
-    echo -e "  become: $sudo_privileges" >> $filename.yml
+    echo -e "\n${LIGHT_GRAY}Select ${LIGHT_GREEN}[task]${NC}:"
+    list_tasks
+
+    # echo -e "---" >> $filename.yml
+    # echo -e "- name: $play_name" >> $filename.yml
+    # echo -e "  hosts: $play_hosts" >> $filename.yml
+    # echo -e "  become: $sudo_privileges" >> $filename.yml
 }
 
 create_play
 
 echo "[=========== RESULT ===========]"
 echo -e "Playbook [${LIGHT_GREEN}$filename.yml${NC}]: "
-cat $filename.yml
+#cat $filename.yml
+echo -e "---"
+echo -e "- name: $play_name"
+echo -e "  hosts: $play_hosts"
+echo -e "  become: $sudo_privileges"
 
