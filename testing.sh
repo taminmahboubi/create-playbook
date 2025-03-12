@@ -151,3 +151,53 @@ for i in "${new_array[@]}"; do
     echo -e "${LIGHT_GREEN}$i${NC}"
 done
 
+
+
+
+
+
+get_module() {
+    module_param="$1"
+
+    # command ansible-doc apt | awk '/^- update_cache/{flag=1} flag && !printed; /type:/{if(flag){print; printed=1; exit}}'
+    #options_description=$(ansible-doc apt | awk -v param="$module_param" '$0 ~ "^- " param {flag=1} flag && !printed; /type:/ {if(flag){printed=1; exit}}')
+    # command ansible-doc apt | sed '/^- update_cache/,$!d' | awk '/^  /{print} /type:/{exit}'
+    options_description=$(ansible-doc apt | sed "/^- $module_param/,/type:/!d; /^- $module_param/d; /type:/q")
+
+    echo "$options_description"
+
+}
+
+declare -A options_dict  # Declare an associative array
+
+# Extract options section
+#options_text=$(ansible-doc apt | awk '/OPTIONS \(= is mandatory\):/{flag=1; next} /ATTRIBUTES:/{flag=0} flag')
+options_text=$(ansible-doc apt | awk '/^RETURN VALUES:/ {exit} {print}' | grep '^-\s' | grep -v 'name:' | cut -d ' ' -f 2)
+some_array=()
+
+# # Populate associative array
+# while IFS= read -r line; do
+#     if [[ $line == "- "* ]]; then
+#         key=${line#"- "}  # Remove leading '- ' to get the key
+#         current_value=$(get_module "$key")
+#         options_dict[$key]="$current_value"
+#     fi
+# done <<< "$options_text"
+
+
+while IFS= read -r line; do
+   some_array+=("$line")
+done <<< "$options_text"
+
+# # store the param of each module to the module
+for key in "${some_array[@]}"; do
+    current_value=$(get_module "$key")
+    options_dict[$key]="$current_value"
+done
+
+
+
+echo -e "${LIGHT_RED}DEBUG:${NC} for loop done"
+
+
+
