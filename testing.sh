@@ -51,12 +51,13 @@ LIGHT_GREEN='\033[92m'
 LIGHT_RED='\033[91m'
 LIGHT_YELLOW='\e[93m'
 LGB='\e[102m'
+LRB='\e[101m'
 FAINT='\e[2m'
+STRIKETHROUGH='\e[9m'
 NC='\033[0m'
 
 
-aptlist=$(ansible-doc apt | awk '/OPTIONS \(= is mandatory\):/{flag=1; next} /ATTRIBUTES:/{flag=0} flag' | awk '/^-/{print $2}')
-
+module_list=$(ansible-doc apt | awk '/OPTIONS \(= is mandatory\):/{flag=1; next} /ATTRIBUTES:/{flag=0} flag' | awk '/^-/{print $2}')
 
 # Check if fzf is installed
 if ! command -v fzf &> /dev/null; then
@@ -136,43 +137,30 @@ get_module() {
 
 }
 
-fruits=()
-coloured_banana=$(colorization "banana" "33")
-fruits+=("$coloured_banana")
-fruits+=("apple")
-fruits+=("pear")
-
-for fruit in "${fruits[@]}"; do
-    echo "$fruit"
-done
-
 
 
 
 
 # create_play
 echo "Select one:"
-
-
-new_array=()
+play_array=()
 
 select_task() {
     local arr_name="$1"
     local -n options="$arr_name"
 
-    options+=("[Done]")
+    done_selecting=$(colorization "[Done]" "92")
+    options+=("$done_selecting")
     selected_options=()
-
+    
     while true; do
 
-        # change the colour of the option
-
         # Show fzf with multi-selection enabled
-        selection=$(printf "%s\n" "${options[@]}" | fzf --height 10 --border --reverse --multi --no-info)
-        
+        selection=$(printf "%s\n" "${options[@]}" | fzf --height 10 --border --reverse --multi --no-info --ansi)
 
+        if [[ -n "$selection" && "$selection" != "[Done]" ]]; then # if the string is -n (not empty) and the selection is not equal to [Done] 
+           
 
-        if [[ -n "$selection" && "$selection" != "[Done]" ]]; then
             # check each selected item
             for item in $selection; do
                 already_selected=false
@@ -195,6 +183,8 @@ select_task() {
                 fi
 
             done
+
+
         elif [[ "${#selected_options[@]}" -eq 0 && "$selection" == "[Done]" ]]; then
             echo -e "${LIGHT_RED}Error: you must choose at least one!${NC}"
             continue
@@ -203,7 +193,7 @@ select_task() {
 
             for i in "${selected_options[@]}"; do
                 echo -e "${LIGHT_GREEN}$i${NC}"
-                new_array+=("$i")
+                play_array+=("$i")
             done
              
             break
@@ -213,13 +203,9 @@ select_task() {
 }
 
 my_array=("name" "apt" "service")
-select_task aptlist
+select_task module_list
 
 
-echo "new_array:"
-for i in "${new_array[@]}"; do
-    echo -e "${LIGHT_GREEN}$i${NC}"
-done
 
 
 

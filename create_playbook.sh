@@ -2,6 +2,7 @@
 
 # ANSI colour codes
 GRAY='\e[90m'
+BLACK='\e[30m'
 LIGHT_BLUE='\033[94m'
 LIGHT_GREEN='\033[92m'
 LIGHT_RED='\033[91m'
@@ -10,6 +11,8 @@ LIGHT_YELLOW='\e[93m'
 BOLD='\e[1m'
 FAINT='\e[2m'
 LGB='\e[102m'
+LRB='\e[101m'
+GB='\e[42m'
 NC='\033[0m'
 
 inventory_file="inventory"
@@ -19,6 +22,87 @@ inventory_array=()
 selected_groups=()
 
 tasks=("apt" "service" "copy" "file")
+
+
+# Check if fzf is installed
+if ! command -v fzf &> /dev/null; then
+    echo -e "fzf - ${LRB}NOT installed.{$NC} Installing now..."
+
+    # Detect package manager and install fzf
+    if [[ -f /etc/debian_version ]]; then
+        sudo apt update && sudo apt install -y fzf
+    elif [[ -f /etc/redhat-release ]]; then
+        sudo yum install -y fzf
+    elif command -v pacman &> /dev/null; then
+        sudo pacman -S --noconfirm fzf
+    elif command -v brew &> /dev/null; then
+        brew install fzf
+    else
+        echo "Unsupported system. Please install fzf manually."
+        exit 1
+    fi
+
+    echo -e "fzf - ${LIGHT_GREEN}installed successfully!${NC}"
+else
+    echo -e "fzf - ${LGB}Installed${NC}"
+fi
+
+colorization() {
+    local num_args=$# # Get the number of arguments
+
+    if [[ $num_args -eq 2 ]]; then
+        local keyword="$1"
+        local colourcode="$2"
+
+        echo -e "\\e[${colourcode}m$keyword\\e[0m"
+
+    elif [[ $num_args -eq 3 ]]; then
+        local text="$1"
+        local keyword="$2"
+        local colourcode="$3"
+
+        # Define the keywords and their colours (Associtive array)
+        local -A change_colours=()
+
+        # store the word and colour code you want to change it to
+        change_colours["$keyword"]="$colourcode"
+        
+        text=$(echo -e "$text" | sed "s/\($keyword\)/\\\e[${colourcode}m\1\\\e[0m/g")
+
+        echo -e "$text"
+    else 
+        echo -e "${LIGHT_RED}Function called with an unexpected number of arguments${NC}"
+    fi
+
+}
+
+
+
+get_module() {
+    module_param="$1"
+
+     # command ansible-doc apt | sed '/^- update_cache/,$!d' | awk '/^  /{print} /type:/{exit}'
+    options_description=$(ansible-doc apt | sed "/^- $module_param/,/type:/!d; /^- $module_param/d; /type:/q")
+
+    # Define the keywords and their colors
+    declare -A colors=(
+    ["aliases:"]="93"  # Yellow
+    ["default:"]="93"
+    ["type:"]="93" 
+    )
+
+    # Apply colorization using sed
+    for keyword in "${!colors[@]}"; do
+        color_code="${colors[$keyword]}"
+        options_description=$(echo "$options_description" | sed "s/\($keyword\)/\\\e[${color_code}m\1\\\e[0m/g")
+    done
+  
+
+    echo -e "$options_description"
+
+}
+
+
 
 echo -e "${LIGHT_GRAY}Enter File Name:${NC} "
 read -p "> " filename
@@ -112,7 +196,7 @@ select_group() {
                 if [ ${#selected_groups[@]} -eq 0 ]; then
                     echo -e "${LIGHT_RED}Invalid input, add minumum one host or '${BOLD}all${NC}${LIGHT_RED}'!${NC}"
                 else
-                    echo -e "${LIGHT_GREEN}Added!${NC}"
+                    echo -e "[hosts]- ${LGB} Added!${NC}"
                     send_groups "${group_index[$group_num]}"
                     break
                 fi
@@ -137,13 +221,114 @@ send_groups() {
 }
 
 list_tasks() {
+    echo -e "\nSelect a Module:"
+
     for item in "${tasks[@]}"; do
         echo -e "${LIGHT_BLUE}[$item]${NC}"
+    done
+
+    while true; do
+        read -p "> " task_name
+
+        for item in "${tasks[@]}"; do
+            if [[ "$task_name" == "$item" ]]; then
+                module_list=$(ansible-doc "$task_name" | awk '/OPTIONS \(= is mandatory\):/{flag=1; next} /ATTRIBUTES:/{flag=0} flag' | awk '/^-/{print $2}')
+                play_array=()
+                select_task module_list
+                return  # Exit the function immediately
+            fi
+        done
+
+        echo -e "${LIGHT_RED}Error: Task '$task_name' not found. Try again.${NC}"
     done
 }
 
 
 
+
+
+select_task() {
+    local arr_name="$1"
+    local -n options="$arr_name"
+
+    done_selecting=$(colorization "[Done]" "92")
+    options+=("$done_selecting")
+    selected_options=()
+    
+    while true; do
+
+        # Show fzf with multi-selection enabled
+        selection=$(printf "%s\n" "${options[@]}" | fzf --height 10 --border --reverse --multi --no-info --ansi)
+
+        if [[ -n "$selection" && "$selection" != "[Done]" ]]; then # if the string is -n (not empty) and the selection is not equal to [Done] 
+           
+
+            # check each selected item
+            for item in $selection; do
+                already_selected=false
+
+                for selected in "${selected_options[@]}"; do
+                    if [[ "$selected" == "$item" ]]; then
+                        already_selected=true
+                        break
+                    fi
+                done
+
+                if $already_selected; then
+                    echo -e "${LIGHT_RED}Error: '$item' is already selected!${NC}"
+                    continue
+                else
+                    selected_options+=("$item")
+                    echo -e "You selected: ${LIGHT_GREEN}$item${NC}"
+                    get_module "$item"
+                    continue
+                fi
+
+            done
+
+
+        elif [[ "${#selected_options[@]}" -eq 0 && "$selection" == "[Done]" ]]; then
+            echo -e "${LIGHT_RED}Error: you must choose at least one!${NC}"
+            continue
+        elif [[ "$selection" == *"[Done]"* ]]; then # If "Exit" is selected, break the loop
+
+            for i in "${selected_options[@]}"; do
+                play_array+=("$i")
+            done
+             
+            break
+        fi
+    done
+}
+
+
+
+
+
+create_task() {
+    echo -e "\n${LIGHT_GRAY}Enter name for ${LIGHT_GREEN}[task]${NC}:"
+    read -p "> " task_title
+
+    list_tasks    
+
+    declare -gA task_key=()
+
+    for task in "${play_array[@]}"; do
+        read -p "$task: > " task_title
+        task_key[$task]="$task_title"
+    done 
+
+    
+}
+
+send_tasks() {
+    echo -e "    - name: $task_title"
+    echo -e "      $task_name:"
+
+    for key in "${!task_key[@]}"; do
+         echo -e "        $key: ${task_key[$key]}"
+    done
+}
 
 
 create_play() {
@@ -168,13 +353,17 @@ create_play() {
         fi
     done
 
-    echo -e "\n${LIGHT_GRAY}Select ${LIGHT_GREEN}[task]${NC}:"
-    list_tasks
+    create_task
+    
+
+
 
     # echo -e "---" >> $filename.yml
     # echo -e "- name: $play_name" >> $filename.yml
     # echo -e "  hosts: $play_hosts" >> $filename.yml
     # echo -e "  become: $sudo_privileges" >> $filename.yml
+    # echo -e "  tasks:" >> $filename.yml
+    #send_tasks
 }
 
 create_play
@@ -186,4 +375,7 @@ echo -e "---"
 echo -e "- name: $play_name"
 echo -e "  hosts: $play_hosts"
 echo -e "  become: $sudo_privileges"
+echo -e "  tasks:" 
+send_tasks
 
+    #echo -e "${LRB}DEBUG:${NC}"
