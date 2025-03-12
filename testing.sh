@@ -49,10 +49,13 @@
 #!/bin/bash
 LIGHT_GREEN='\033[92m'
 LIGHT_RED='\033[91m'
+LIGHT_YELLOW='\e[93m'
 LGB='\e[102m'
+FAINT='\e[2m'
 NC='\033[0m'
 
-aptlist=$(ansible-doc apt | grep '^-\s' | grep -v 'name:' | cut -d ' ' -f 2)
+
+aptlist=$(ansible-doc apt | awk '/OPTIONS \(= is mandatory\):/{flag=1; next} /ATTRIBUTES:/{flag=0} flag' | awk '/^-/{print $2}')
 
 
 # Check if fzf is installed
@@ -78,11 +81,77 @@ else
     echo -e "${LGB}fzf is already installed${NC}"
 fi
 
+colorization() {
+    local num_args=$# # Get the number of arguments
+
+    if [[ $num_args -eq 2 ]]; then
+        local keyword="$1"
+        local colourcode="$2"
+
+        echo -e "\\e[${colourcode}m$keyword\\e[0m"
+
+    elif [[ $num_args -eq 3 ]]; then
+        local text="$1"
+        local keyword="$2"
+        local colourcode="$3"
+
+        # Define the keywords and their colours (Associtive array)
+        local -A change_colours=()
+
+        # store the word and colour code you want to change it to
+        change_colours["$keyword"]="$colourcode"
+        
+        text=$(echo -e "$text" | sed "s/\($keyword\)/\\\e[${colourcode}m\1\\\e[0m/g")
+
+        echo -e "$text"
+    else 
+        echo -e "${LIGHT_RED}Function called with an unexpected number of arguments${NC}"
+    fi
+
+}
+
+
+
+get_module() {
+    module_param="$1"
+
+     # command ansible-doc apt | sed '/^- update_cache/,$!d' | awk '/^  /{print} /type:/{exit}'
+    options_description=$(ansible-doc apt | sed "/^- $module_param/,/type:/!d; /^- $module_param/d; /type:/q")
+
+    # Define the keywords and their colors
+    declare -A colors=(
+    ["aliases:"]="93"  # Yellow
+    ["default:"]="93"
+    ["type:"]="93" 
+    )
+
+    # Apply colorization using sed
+    for keyword in "${!colors[@]}"; do
+        color_code="${colors[$keyword]}"
+        options_description=$(echo "$options_description" | sed "s/\($keyword\)/\\\e[${color_code}m\1\\\e[0m/g")
+    done
+  
+
+    echo -e "$options_description"
+
+}
+
+fruits=()
+coloured_banana=$(colorization "banana" "33")
+fruits+=("$coloured_banana")
+fruits+=("apple")
+fruits+=("pear")
+
+for fruit in "${fruits[@]}"; do
+    echo "$fruit"
+done
+
+
+
+
+
 # create_play
 echo "Select one:"
-
-
-
 
 
 new_array=()
@@ -91,7 +160,7 @@ select_task() {
     local arr_name="$1"
     local -n options="$arr_name"
 
-    options+=("Done")
+    options+=("[Done]")
     selected_options=()
 
     while true; do
@@ -103,7 +172,7 @@ select_task() {
         
 
 
-        if [[ -n "$selection" && "$selection" != "Done" ]]; then
+        if [[ -n "$selection" && "$selection" != "[Done]" ]]; then
             # check each selected item
             for item in $selection; do
                 already_selected=false
@@ -121,14 +190,15 @@ select_task() {
                 else
                     selected_options+=("$item")
                     echo -e "You selected: ${LIGHT_GREEN}$item${NC}"
+                    get_module "$item"
                     continue
                 fi
 
             done
-        elif [[ "${#selected_options[@]}" -eq 0 && "$selection" == "Done" ]]; then
+        elif [[ "${#selected_options[@]}" -eq 0 && "$selection" == "[Done]" ]]; then
             echo -e "${LIGHT_RED}Error: you must choose at least one!${NC}"
             continue
-        elif [[ "$selection" == *"Done"* ]]; then # If "Exit" is selected, break the loop
+        elif [[ "$selection" == *"[Done]"* ]]; then # If "Exit" is selected, break the loop
             echo "Selected:"
 
             for i in "${selected_options[@]}"; do
@@ -153,51 +223,6 @@ done
 
 
 
-
-
-
-get_module() {
-    module_param="$1"
-
-    # command ansible-doc apt | awk '/^- update_cache/{flag=1} flag && !printed; /type:/{if(flag){print; printed=1; exit}}'
-    #options_description=$(ansible-doc apt | awk -v param="$module_param" '$0 ~ "^- " param {flag=1} flag && !printed; /type:/ {if(flag){printed=1; exit}}')
-    # command ansible-doc apt | sed '/^- update_cache/,$!d' | awk '/^  /{print} /type:/{exit}'
-    options_description=$(ansible-doc apt | sed "/^- $module_param/,/type:/!d; /^- $module_param/d; /type:/q")
-
-    echo "$options_description"
-
-}
-
-declare -A options_dict  # Declare an associative array
-
-# Extract options section
-#options_text=$(ansible-doc apt | awk '/OPTIONS \(= is mandatory\):/{flag=1; next} /ATTRIBUTES:/{flag=0} flag')
-options_text=$(ansible-doc apt | awk '/^RETURN VALUES:/ {exit} {print}' | grep '^-\s' | grep -v 'name:' | cut -d ' ' -f 2)
-some_array=()
-
-# # Populate associative array
-# while IFS= read -r line; do
-#     if [[ $line == "- "* ]]; then
-#         key=${line#"- "}  # Remove leading '- ' to get the key
-#         current_value=$(get_module "$key")
-#         options_dict[$key]="$current_value"
-#     fi
-# done <<< "$options_text"
-
-
-while IFS= read -r line; do
-   some_array+=("$line")
-done <<< "$options_text"
-
-# # store the param of each module to the module
-for key in "${some_array[@]}"; do
-    current_value=$(get_module "$key")
-    options_dict[$key]="$current_value"
-done
-
-
-
-echo -e "${LIGHT_RED}DEBUG:${NC} for loop done"
 
 
 
