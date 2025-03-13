@@ -26,7 +26,7 @@ tasks=("apt" "service" "copy" "file")
 
 # Check if fzf is installed
 if ! command -v fzf &> /dev/null; then
-    echo -e "fzf - ${LRB}NOT installed.{$NC} Installing now..."
+    echo -e "[fzf - ${LRB}NOT installed.{$NC}] Installing now..."
 
     # Detect package manager and install fzf
     if [[ -f /etc/debian_version ]]; then
@@ -42,9 +42,9 @@ if ! command -v fzf &> /dev/null; then
         exit 1
     fi
 
-    echo -e "fzf - ${LIGHT_GREEN}installed successfully!${NC}"
+    echo -e "[fzf - ${LIGHT_GREEN}installed successfully!${NC}]"
 else
-    echo -e "fzf - ${LGB}Installed${NC}"
+    echo -e "[fzf - ${LGB}INSTALLED${NC}]"
 fi
 
 colorization() {
@@ -103,9 +103,17 @@ get_module() {
 }
 
 
+while true; do
+    echo -e "\n${LIGHT_GRAY}Enter File Name:${NC} ${FAINT}(e.g. 'my_playbook', '.yml' will be added automatically)${NC}"
+    read -p "> " filename
 
-echo -e "${LIGHT_GRAY}Enter File Name:${NC} "
-read -p "> " filename
+    if [ -n "$filename" ]; then
+        break
+    else
+        echo -e "\r${LIGHT_RED}Input cannot be empty!${NC}"
+    fi
+done
+
 
 # Create playbook based on 'filename' variable
 #touch "$filename".yml
@@ -187,7 +195,7 @@ select_group() {
             read -p "> " group_num
 
             if [[ "$group_num" =~ ^[0-9]+$ && -v group_index[$group_num] ]]; then
-                echo -e "You have selected [${LIGHT_GREEN}${group_index[$group_num]}${NC}]"
+                echo -e "You have selected [${LIGHT_GREEN}${group_index[$group_num]}${NC}]\n"
                 send_groups "${group_index[$group_num]}"
                 remove_group "$group_num"
                 print_inventory
@@ -253,6 +261,8 @@ select_task() {
 
     done_selecting=$(colorization "[Done]" "92")
     options+=("$done_selecting")
+    
+    
     selected_options=()
     
     while true; do
@@ -299,6 +309,9 @@ select_task() {
             break
         fi
     done
+
+    # Reset options so that [Done] doesn't duplicate each time a new task is added
+    options=()
 }
 
 
@@ -306,8 +319,8 @@ select_task() {
 
 
 create_task() {
-    echo -e "\n${LIGHT_GRAY}Enter name for ${LIGHT_GREEN}[task]${NC}:"
-    read -p "> " task_title
+    echo -e "\n${LIGHT_GRAY}Enter name for ${LIGHT_GREEN}[task]${NC}: ${FAINT}(e.g. 'Install Apache2')${NC}"
+    read -p "> " task_reference
 
     list_tasks    
 
@@ -322,7 +335,7 @@ create_task() {
 }
 
 send_tasks() {
-    echo -e "    - name: $task_title"
+    echo -e "    - name: $task_reference"
     echo -e "      $task_name:"
 
     for key in "${!task_key[@]}"; do
@@ -332,14 +345,27 @@ send_tasks() {
 
 
 create_play() {
-    echo -e "\n${LIGHT_GRAY}Enter Play ${LIGHT_GREEN}[name]${NC}: "
-    read -p "> " play_name
+    while true; do
+        echo -e "\n${LIGHT_GRAY}Enter Play ${LIGHT_GREEN}[name]${NC}: ${FAINT}(e.g. 'Install and start Apache2')${NC}"
+        read -p "> " play_name
 
+        if [ -n "$play_name" ]; then
+            break
+        else
+            echo -e "${LIGHT_RED}Input cannot be empty!${NC}"
+        fi
+    done
+    
+    # [Add to filename-play name]
+    # echo -e "---" >> $filename.yml
+    # echo -e "- name: $play_name" >> $filename.yml
     
     echo -e "\n${LIGHT_GRAY}Enter groups (from inventory)${LIGHT_GREEN}[hosts]${NC}: "
     check_inventory
     hosts_num="${#selected_groups[@]}"
     play_hosts="${selected_groups[@]:0:$hosts_num}"
+    # [Add to filename-hosts]
+    # echo -e "  hosts: $play_hosts" >> $filename.yml
 
 
     echo -e "\n${LIGHT_GRAY}Grant sudo privilages? (yes/no)${NC} ${LIGHT_GREEN}[become]${NC} : "
@@ -352,18 +378,27 @@ create_play() {
             echo -e "${LIGHT_RED}Answer must be yes or no!${NC}"
         fi
     done
-
-    create_task
-    
-
-
-
-    # echo -e "---" >> $filename.yml
-    # echo -e "- name: $play_name" >> $filename.yml
-    # echo -e "  hosts: $play_hosts" >> $filename.yml
+    # [Add to filename-become]
     # echo -e "  become: $sudo_privileges" >> $filename.yml
+    
+    create_task
+    # [Add to filename-tasks]
     # echo -e "  tasks:" >> $filename.yml
     #send_tasks
+
+    while true; do
+        read -p "Do you want to add another [task]? (yes/no): " add_task
+
+        if [ "$add_task" == "yes" ]; then
+            create_task
+            send_tasks
+        elif [ "$add_task" == "no" ]; then
+            echo -e "${LGB}[PLAYBOOK '$filename' CREATED]${NC}"
+            break
+        else
+            echo -e "${LIGHT_RED}Incorrect answer!${NC}${FAINT} Type ${NC}'yes'${FAINT} or ${NC}'no'"
+        fi
+    done
 }
 
 create_play
