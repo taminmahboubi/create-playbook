@@ -152,21 +152,33 @@ select_task() {
     done_selecting=$(colorization "[Done]" "92")
     options+=("$done_selecting")
     selected_options=()
+
+    extra=""
     
     while true; do
 
         # Show fzf with multi-selection enabled
         #selection=$(printf "%s\n" "${options[@]}" | fzf --height 10 --border --reverse --multi --no-info --ansi)
         selection=$(printf "%s\n" "${options[@]}" | fzf --preview='
-module_list=$(ansible-doc apt | awk "/OPTIONS \(= is mandatory\):/{flag=1; next} /ATTRIBUTES:/{flag=0} flag" | awk "/^-/{print $2}")
-options=()
+modules=("apt" "service" "copy" "file")
+options""
 
-options="$module_list"
+for module in "${modules[@]}"; do
+  option_modules=$(ansible-doc apt | awk "/OPTIONS \(= is mandatory\):/{flag=1; next} /ATTRIBUTES:/{flag=0} flag" | awk "/^-/{print $2}")
+
+  options+="$module: $option_modules\n"
+done
 
 get_module() {
     module_param="$1"
 
-    options_description=$(ansible-doc apt | sed "/^- $module_param/,/type:/!d; /^- $module_param/d; /type:/q")
+    options_description=""
+
+    for module in "${modules[@]}"; do
+    module_params=$(ansible-doc "$module" | sed "/^- $module_param/,/type:/!d; /^- $module_param/d; /type:/q")
+    options_description+="$module: $module_params\n"
+    done
+
      # Define the keywords and their colors
     declare -A colors=(
     ["aliases:"]="93"  # Yellow
@@ -189,7 +201,7 @@ for item in ${options[@]}; do
     fi
 done
 
-' --preview-window=down:15 --height 25 --border --reverse --multi --no-info --ansi)
+' --preview-window=down:10 --height 20 --border --reverse --multi --no-info --ansi)
 
         if [[ -n "$selection" && "$selection" != "[Done]" ]]; then # if the string is -n (not empty) and the selection is not equal to [Done] 
            
@@ -211,7 +223,6 @@ done
                 else
                     selected_options+=("$item")
                     echo -e "You selected: ${LIGHT_GREEN}$item${NC}"
-                    get_module "$item"
                     continue
                 fi
 

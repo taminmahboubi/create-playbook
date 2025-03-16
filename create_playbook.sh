@@ -22,6 +22,7 @@ inventory_array=()
 selected_groups=()
 
 tasks=("apt" "service" "copy" "file")
+selected_task=""
 
 
 # Check if fzf is installed
@@ -240,6 +241,7 @@ list_tasks() {
 
         for item in "${tasks[@]}"; do
             if [[ "$task_name" == "$item" ]]; then
+                selected_task="$task_name"
                 module_list=$(ansible-doc "$task_name" | awk '/OPTIONS \(= is mandatory\):/{flag=1; next} /ATTRIBUTES:/{flag=0} flag' | awk '/^-/{print $2}')
                 play_array=()
                 select_task module_list
@@ -252,9 +254,6 @@ list_tasks() {
 }
 
 
-
-
-
 select_task() {
     local arr_name="$1"
     local -n options="$arr_name"
@@ -262,14 +261,48 @@ select_task() {
     done_selecting=$(colorization "[Done]" "92")
     options+=("$done_selecting")
     
-    
     selected_options=()
+    
     
     while true; do
 
         # Show fzf with multi-selection enabled
-        selection=$(printf "%s\n" "${options[@]}" | fzf --height 10 --border --reverse --multi --no-info --ansi)
+        selection=$(printf "%s\n" "${options[@]}" | fzf --preview='
+reference="'"$selected_task"'" # use the global selected_task variable
 
+module_list=$(ansible-doc $reference | awk "/OPTIONS \(= is mandatory\):/{flag=1; next} /ATTRIBUTES:/{flag=0} flag" | awk "/^-/{print $2}")
+
+options=()
+
+options="$module_list"
+
+get_module() {
+    module_param="$1"
+
+    options_description=$(ansible-doc $reference | sed "/^- $module_param/,/type:/!d; /^- $module_param/d; /type:/q")
+     # Define the keywords and their colors
+    declare -A colors=(
+    ["aliases:"]="93"  # Yellow
+    ["default:"]="93"
+    ["type:"]="93" 
+    )
+
+    # Apply colorization using sed
+    for keyword in "${!colors[@]}"; do
+        color_code="${colors[$keyword]}"
+        options_description=$(echo "$options_description" | sed "s/\($keyword\)/\\\e[${color_code}m\1\\\e[0m/g")
+    done
+
+    echo -e "$options_description"
+}
+
+for item in ${options[@]}; do
+    if [ {} == "$item" ]; then
+        get_module "$item"
+    fi
+done
+
+' --preview-window=down:10 --height 20 --border --reverse --multi --no-info --ansi)
         if [[ -n "$selection" && "$selection" != "[Done]" ]]; then # if the string is -n (not empty) and the selection is not equal to [Done] 
            
 
