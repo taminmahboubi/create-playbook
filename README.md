@@ -234,3 +234,14 @@ We'll also use `if [[ -v group_index[$id] ]]` to check if a variable exists.
 I will focus on **apt, service, copy, file**:
 using `ansible-doc apt | grep '^-\s' | grep -v 'name:' | cut -d ' ' -f 2` command, to extract all the parameters for that task.
 
+'ansible-galaxy collection list'
+gives a list of Ansible collections
+
+'ansible-galaxy collection list | grep -vE "^#|^Collection|^---|^[[:space:]]*$" | awk -F'.' '{print $1}' | sort -u'
+List of unique vendor name
+
+'ansible-doc -l | grep amazon'
+to get the list of that specific vendor
+
+'ansible-doc -l | grep '^ansible\.' | awk -F'.' '{print $1"."$2}' | sort -u'
+collection names

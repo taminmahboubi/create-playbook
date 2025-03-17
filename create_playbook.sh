@@ -3,6 +3,7 @@
 # ANSI colour codes
 GRAY='\e[90m'
 BLACK='\e[30m'
+GREEN='\e[32m'
 LIGHT_BLUE='\033[94m'
 LIGHT_GREEN='\033[92m'
 LIGHT_RED='\033[91m'
@@ -13,6 +14,7 @@ FAINT='\e[2m'
 LGB='\e[102m'
 LRB='\e[101m'
 GB='\e[42m'
+GRAYBG='\e[47m'
 NC='\033[0m'
 
 inventory_file="inventory"
@@ -105,7 +107,7 @@ get_module() {
 
 
 while true; do
-    echo -e "\n${LIGHT_GRAY}Enter File Name:${NC} ${FAINT}(e.g. 'my_playbook', '.yml' will be added automatically)${NC}"
+    echo -e "\n${GRAYBG}${BLACK}Enter File Name:${NC} ${FAINT}(e.g. 'my_playbook', '.yml' will be added automatically)${NC}"
     read -p "> " filename
 
     if [ -n "$filename" ]; then
@@ -230,7 +232,7 @@ send_groups() {
 }
 
 list_tasks() {
-    echo -e "\nSelect a Module:"
+    echo -e "\n${GRAYBG}${BLACK}Select a Module:${NC}"
 
     for item in "${tasks[@]}"; do
         echo -e "${LIGHT_BLUE}[$item]${NC}"
@@ -352,7 +354,7 @@ done
 
 
 create_task() {
-    echo -e "\n${LIGHT_GRAY}Enter name for ${LIGHT_GREEN}[task]${NC}: ${FAINT}(e.g. 'Install Apache2')${NC}"
+    echo -e "\n${GRAYBG}${BLACK}Enter name for ${NC} ${GREEN}[task]${NC}: ${FAINT}(e.g. 'Install Apache2')${NC}"
     read -p "> " task_reference
 
     list_tasks    
@@ -379,7 +381,7 @@ send_tasks() {
 
 create_play() {
     while true; do
-        echo -e "\n${LIGHT_GRAY}Enter Play ${LIGHT_GREEN}[name]${NC}: ${FAINT}(e.g. 'Install and start Apache2')${NC}"
+        echo -e "\n${GRAYBG}${BLACK}Enter Play ${NC} ${GREEN}[name]${NC}: ${FAINT}(e.g. 'Install and start Apache2')${NC}"
         read -p "> " play_name
 
         if [ -n "$play_name" ]; then
@@ -393,7 +395,7 @@ create_play() {
     # echo -e "---" >> $filename.yml
     # echo -e "- name: $play_name" >> $filename.yml
     
-    echo -e "\n${LIGHT_GRAY}Enter groups (from inventory)${LIGHT_GREEN}[hosts]${NC}: "
+    echo -e "\n${GRAYBG}${BLACK}Enter groups (from inventory)${NC} ${GREEN}[hosts]${NC}: "
     check_inventory
     hosts_num="${#selected_groups[@]}"
     play_hosts="${selected_groups[@]:0:$hosts_num}"
@@ -401,7 +403,7 @@ create_play() {
     # echo -e "  hosts: $play_hosts" >> $filename.yml
 
 
-    echo -e "\n${LIGHT_GRAY}Grant sudo privilages? (yes/no)${NC} ${LIGHT_GREEN}[become]${NC} : "
+    echo -e "\n${GRAYBG}${BLACK}Grant sudo privilages? (yes/no)${NC} ${GREEN}[become]${NC}: "
     while true; do
         read -p "> " sudo_privileges
 
