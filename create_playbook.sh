@@ -23,7 +23,7 @@ reversed_inventory=()
 inventory_array=()
 selected_groups=()
 
-tasks=("apt" "service" "copy" "file")
+#tasks=("apt" "service" "copy" "file")
 selected_task=""
 
 

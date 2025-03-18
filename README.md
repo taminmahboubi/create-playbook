@@ -245,3 +245,11 @@ to get the list of that specific vendor
 
 'ansible-doc -l | grep '^ansible\.' | awk -F'.' '{print $1"."$2}' | sort -u'
 collection names
+
+`'ansible-doc -l | grep '^ansible\.builtin\.' | awk '{print $1}'`
+for the module names 
+
+it goes:
+- ansible -> namespace
+- .builtin -> collection name
+- .apt -> module name
