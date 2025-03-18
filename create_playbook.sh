@@ -231,30 +231,73 @@ send_groups() {
     selected_groups+=("$1")
 }
 
+# list_tasks() {
+#     echo -e "\n${GRAYBG}${BLACK}Select a Module:${NC}"
+
+#     for item in "${tasks[@]}"; do
+#         echo -e "${LIGHT_BLUE}[$item]${NC}"
+#     done
+
+#     while true; do
+#         read -p "> " task_name
+
+#         for item in "${tasks[@]}"; do
+#             if [[ "$task_name" == "$item" ]]; then
+#                 selected_task="$task_name"
+#                 module_list=$(ansible-doc "$task_name" | awk '/OPTIONS \(= is mandatory\):/{flag=1; next} /ATTRIBUTES:/{flag=0} flag' | awk '/^-/{print $2}')
+#                 play_array=()
+#                 select_task module_list
+#                 return  # Exit the function immediately
+#             fi
+#         done
+
+#         echo -e "${LIGHT_RED}Error: Task '$task_name' not found. Try again.${NC}"
+#     done
+# }
+fzf_height() {
+  local array=()
+  local input="$1"
+
+  # Split the input string into an array
+  IFS=$'\n' read -rd '' -a array <<< "$input"
+
+  local num_items=$(("${#array[@]}" + 3))
+  echo "$num_items"
+}
+
+get_namespace() {
+  namespaces=$(ansible-galaxy collection list | grep -vE "^#|^Collection|^---|^[[:space:]]*$" | awk -F'.' '{print $1}' | sort -u)
+
+  vendor_output=$(printf "%s\n" "${namespaces[@]}")
+  vendor_names=$(echo "$vendor_output" | fzf --height "$(fzf_height "$vendor_output")" --border --reverse --multi --no-info --ansi)
+
+  next_varaialbe=$(ansible-doc -l | grep "^$vendor_names\." | awk -F'.' '{print $1"."$2}' | sort -u)
+
+  collection_output=$(printf "%s\n" "${next_varaialbe[@]}" )
+  collection_names=$(echo "$collection_output"| fzf --height "$(fzf_height "$collection_output")" --border --reverse --multi --no-info --ansi)
+
+
+  next_variable_two=$(ansible-doc -l | grep "^$collection_names\." | awk '{print $1}')
+
+  module_output=$(printf "%s\n" "${next_variable_two[@]}" )
+  module_names=$(echo "$module_output"| fzf --height "$(fzf_height "$module_output")" --border --reverse --multi --no-info --ansi --preview "
+  ansible-doc {} | awk '/ADDED IN/ {exit} {print}'" --preview-window='bottom:30%')
+
+  next_variable_three=$(ansible-doc -l | grep "^$module_names " | awk '{print $1}')
+  
+  
+  echo "$next_variable_three"
+}
+
 list_tasks() {
     echo -e "\n${GRAYBG}${BLACK}Select a Module:${NC}"
 
-    for item in "${tasks[@]}"; do
-        echo -e "${LIGHT_BLUE}[$item]${NC}"
-    done
-
-    while true; do
-        read -p "> " task_name
-
-        for item in "${tasks[@]}"; do
-            if [[ "$task_name" == "$item" ]]; then
-                selected_task="$task_name"
-                module_list=$(ansible-doc "$task_name" | awk '/OPTIONS \(= is mandatory\):/{flag=1; next} /ATTRIBUTES:/{flag=0} flag' | awk '/^-/{print $2}')
-                play_array=()
-                select_task module_list
-                return  # Exit the function immediately
-            fi
-        done
-
-        echo -e "${LIGHT_RED}Error: Task '$task_name' not found. Try again.${NC}"
-    done
+    
+    selected_task=$(get_namespace)
+    module_list=$(ansible-doc "$selected_task" | awk '/OPTIONS \(= is mandatory\):/{flag=1; next} /ATTRIBUTES:/{flag=0} flag' | awk '/^-/{print $2}')
+    play_array=()
+    select_task module_list
 }
-
 
 select_task() {
     local arr_name="$1"
