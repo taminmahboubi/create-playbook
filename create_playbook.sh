@@ -57,19 +57,19 @@ create_file() {
     # Animation loop for 2 seconds
     end=$((SECONDS+2))
     while [ $SECONDS -lt $end ]; do
-        for dots in "." ".." "..."; do
-            echo -ne "\r${LIGHT_GREEN}Creating File${dots}${NC}"  # \r keeps it on the same line
-            sleep 0.5
+        for dots in "●" "○" "●" "○" "●" "○"; do
+            echo -ne "\r[$filename.yml] - ${GRAY}Creating File${NC} ${dots}"  # \r keeps it on the same line
+            sleep 0.2
         done
     done
 
 
     # Clear the animation text and replace it with "FILE CREATED!"
-    echo -ne "\r${LGB}FILE ${BLACK}$file_name.yml${NC}${LGB} CREATED!${NC}      \n"  # Overwrites old text
+    echo -ne "\r[$filename.yml] - ${LIGHT_GREEN}FILE CREATED! ●${NC}   \n"  # Overwrites old text
 }
 
 delete_file() {
-
+    echo ""
     # Animation loop for 2 seconds
     end=$((SECONDS+2))
     while [ $SECONDS -lt $end ]; do
@@ -83,7 +83,7 @@ delete_file() {
     rm -f "$filename.yml"
 
     # Clear the animation text and replace it with "FILE DELETED!"
-    echo -ne "\r${LRB}FILE ${BLACK}$filename.yml${NC}${LRB} DELETED!${NC}      \n"  # Overwrites old text
+    echo -ne "\r${LIGHT_RED}FILE ${WHITE}$filename.yml${NC}${LIGHT_RED} DELETED!${NC}      \n"  # Overwrites old text
 }
 
 colorization() {
@@ -245,7 +245,7 @@ select_group() {
                 if [ ${#selected_groups[@]} -eq 0 ]; then
                     echo -e "${LIGHT_RED}Invalid input, add minumum one host or '${BOLD}all${NC}${LIGHT_RED}'!${NC}"
                 else
-                    echo -e "[hosts]- ${LGB} Added!${NC}"
+                    echo -e "[hosts]- ${LIGHT_GREEN} ADDED ●${NC}"
                     send_groups "${group_index[$group_num]}"
                     break
                 fi
@@ -386,7 +386,7 @@ done
                 else
                     selected_options+=("$item")
                     echo -e "You selected: ${LIGHT_GREEN}$item${NC}"
-                    get_module "$item"
+                    #get_module "$item"
                     continue
                 fi
 
@@ -498,7 +498,7 @@ create_play() {
             create_task
             send_tasks
         elif [ "$add_task" == "no" ]; then
-            echo -e "\n[=== ${GRAYBG}${BLACK}PLAYBOOK '$filename' Results:${NC} ===]"
+            echo -e "\n${GRAYBG}${BLACK}[=== ${BLACK}PLAYBOOK '$filename.yml' ===]${NC}"
             break
         else
             echo -e "${LIGHT_RED}Incorrect answer!${NC}${FAINT} Type ${NC}'yes'${FAINT} or ${NC}'no'"
