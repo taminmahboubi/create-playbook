@@ -3,6 +3,7 @@
 # ANSI colour codes
 GRAY='\e[90m'
 BLACK='\e[30m'
+WHITE='\e[1;37m'
 GREEN='\e[32m'
 LIGHT_BLUE='\033[94m'
 LIGHT_GREEN='\033[92m'
@@ -11,8 +12,8 @@ LIGHT_GRAY='\e[37m'
 LIGHT_YELLOW='\e[93m'
 BOLD='\e[1m'
 FAINT='\e[2m'
-LGB='\e[102m'
-LRB='\e[101m'
+LGB='\e[1;102m'
+LRB='\e[1;101m'
 GB='\e[42m'
 GRAYBG='\e[47m'
 NC='\033[0m'
@@ -49,6 +50,41 @@ if ! command -v fzf &> /dev/null; then
 else
     echo -e "[fzf - ${LGB}INSTALLED${NC}]"
 fi
+
+create_file() {
+    local file_name="$1"
+
+    # Animation loop for 2 seconds
+    end=$((SECONDS+2))
+    while [ $SECONDS -lt $end ]; do
+        for dots in "." ".." "..."; do
+            echo -ne "\r${LIGHT_GREEN}Creating File${dots}${NC}"  # \r keeps it on the same line
+            sleep 0.5
+        done
+    done
+
+
+    # Clear the animation text and replace it with "FILE CREATED!"
+    echo -ne "\r${LGB}FILE ${BLACK}$file_name.yml${NC}${LGB} CREATED!${NC}      \n"  # Overwrites old text
+}
+
+delete_file() {
+
+    # Animation loop for 2 seconds
+    end=$((SECONDS+2))
+    while [ $SECONDS -lt $end ]; do
+        for dots in "." ".." "..."; do
+            echo -ne "\r${LIGHT_RED}Deleting File${dots}${NC}"  # \r keeps it on the same line
+            sleep 0.5
+        done
+    done
+
+    # Remove the file
+    rm -f "$filename.yml"
+
+    # Clear the animation text and replace it with "FILE DELETED!"
+    echo -ne "\r${LRB}FILE ${BLACK}$filename.yml${NC}${LRB} DELETED!${NC}      \n"  # Overwrites old text
+}
 
 colorization() {
     local num_args=$# # Get the number of arguments
@@ -111,6 +147,9 @@ while true; do
     read -p "> " filename
 
     if [ -n "$filename" ]; then
+        # Create playbook based on 'filename' variable
+        touch "$filename".yml
+        create_file "$filename"
         break
     else
         echo -e "\r${LIGHT_RED}Input cannot be empty!${NC}"
@@ -118,8 +157,7 @@ while true; do
 done
 
 
-# Create playbook based on 'filename' variable
-#touch "$filename".yml
+
 
 
 declare -A group_index
@@ -212,9 +250,7 @@ select_group() {
                     break
                 fi
             elif [[ "$group_num" == "all" ]]; then
-                for key in "${!group_index[@]}"; do
-                    send_groups "${group_index[$key]}"
-                done
+                send_all
                 break
             else
                 echo -e "${LIGHT_RED}Invalid input, try again!${NC}"
@@ -231,29 +267,11 @@ send_groups() {
     selected_groups+=("$1")
 }
 
-# list_tasks() {
-#     echo -e "\n${GRAYBG}${BLACK}Select a Module:${NC}"
+send_all() {
+    selected_groups=() # make sure the array is empty
+}
 
-#     for item in "${tasks[@]}"; do
-#         echo -e "${LIGHT_BLUE}[$item]${NC}"
-#     done
 
-#     while true; do
-#         read -p "> " task_name
-
-#         for item in "${tasks[@]}"; do
-#             if [[ "$task_name" == "$item" ]]; then
-#                 selected_task="$task_name"
-#                 module_list=$(ansible-doc "$task_name" | awk '/OPTIONS \(= is mandatory\):/{flag=1; next} /ATTRIBUTES:/{flag=0} flag' | awk '/^-/{print $2}')
-#                 play_array=()
-#                 select_task module_list
-#                 return  # Exit the function immediately
-#             fi
-#         done
-
-#         echo -e "${LIGHT_RED}Error: Task '$task_name' not found. Try again.${NC}"
-#     done
-# }
 fzf_height() {
   local array=()
   local input="$1"
@@ -413,11 +431,11 @@ create_task() {
 }
 
 send_tasks() {
-    echo -e "    - name: $task_reference"
-    echo -e "      $task_name:"
+    echo -e "    - name: $task_reference" >> $filename.yml
+    echo -e "      $selected_task:" >> $filename.yml
 
     for key in "${!task_key[@]}"; do
-         echo -e "        $key: ${task_key[$key]}"
+         echo -e "        $key: ${task_key[$key]}" >> $filename.yml
     done
 }
 
@@ -435,15 +453,22 @@ create_play() {
     done
     
     # [Add to filename-play name]
-    # echo -e "---" >> $filename.yml
-    # echo -e "- name: $play_name" >> $filename.yml
+    echo -e "---" >> $filename.yml
+    echo -e "- name: $play_name" >> $filename.yml
     
     echo -e "\n${GRAYBG}${BLACK}Enter groups (from inventory)${NC} ${GREEN}[hosts]${NC}: "
     check_inventory
     hosts_num="${#selected_groups[@]}"
-    play_hosts="${selected_groups[@]:0:$hosts_num}"
-    # [Add to filename-hosts]
-    # echo -e "  hosts: $play_hosts" >> $filename.yml
+    # check if the hosts are empty ('all' selected)
+    if [ "$hosts_num" -eq 0 ]; then
+        echo -e "  hosts: all" >> $filename.yml
+    else
+        play_hosts="${selected_groups[@]:0:$hosts_num}"
+        # [Add to filename-hosts]
+        echo -e "  hosts: $play_hosts" >> $filename.yml
+    fi
+    
+    
 
 
     echo -e "\n${GRAYBG}${BLACK}Grant sudo privilages? (yes/no)${NC} ${GREEN}[become]${NC}: "
@@ -457,21 +482,23 @@ create_play() {
         fi
     done
     # [Add to filename-become]
-    # echo -e "  become: $sudo_privileges" >> $filename.yml
+    echo -e "  become: $sudo_privileges" >> $filename.yml
     
     create_task
     # [Add to filename-tasks]
-    # echo -e "  tasks:" >> $filename.yml
-    #send_tasks
+    echo -e "  tasks:" >> $filename.yml
+    send_tasks
 
     while true; do
+        echo ""
         read -p "Do you want to add another [task]? (yes/no): " add_task
 
         if [ "$add_task" == "yes" ]; then
+            echo -e "" >> $filename.yml # add empty line for new task
             create_task
             send_tasks
         elif [ "$add_task" == "no" ]; then
-            echo -e "${LGB}[PLAYBOOK '$filename' CREATED]${NC}"
+            echo -e "\n[=== ${GRAYBG}${BLACK}PLAYBOOK '$filename' Results:${NC} ===]"
             break
         else
             echo -e "${LIGHT_RED}Incorrect answer!${NC}${FAINT} Type ${NC}'yes'${FAINT} or ${NC}'no'"
@@ -479,16 +506,22 @@ create_play() {
     done
 }
 
+
+
 create_play
 
-echo "[=========== RESULT ===========]"
-echo -e "Playbook [${LIGHT_GREEN}$filename.yml${NC}]: "
-#cat $filename.yml
-echo -e "---"
-echo -e "- name: $play_name"
-echo -e "  hosts: $play_hosts"
-echo -e "  become: $sudo_privileges"
-echo -e "  tasks:" 
-send_tasks
 
-    #echo -e "${LRB}DEBUG:${NC}"
+
+cat $filename.yml
+
+delete_file
+
+# echo -e "\n${LIGHT_RED} Deleting File...${NC}"
+# sleep 2
+# rm $filename.yml
+# echo -e "\n${LRB}FILE DELETED!${NC}"
+
+
+
+
+#echo -e "${LRB}DEBUG:${NC}"

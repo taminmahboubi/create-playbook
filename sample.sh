@@ -43,6 +43,35 @@ fzf_height "$vendor_output"
 fzf_height "$collection_output"
 fzf_height "$module_output"
 
+
+LIGHT_RED='\e[1;31m'
+NC='\e[0m'
+LRB='\e[1;32m'
+
+delete_file() {
+    local filename="$1"  # Take filename as an argument
+
+    # Animation loop for 2 seconds
+    end=$((SECONDS+2))
+    while [ $SECONDS -lt $end ]; do
+        for dots in "." ".." "..."; do
+            echo -ne "\r${LIGHT_RED}Deleting File${dots}${NC}"  # \r keeps it on the same line
+            sleep 0.5
+        done
+    done
+
+    # Remove the file
+    rm -f "$filename.yml"
+
+    # Clear the animation text and replace it with "FILE DELETED!"
+    echo -ne "\r${LRB}FILE DELETED!${NC}      \n"  # Overwrites old text
+}
+
+
+
+# Example usage:
+delete_file "yourfile"  # Replace with actual filename
+
 #ansible-doc "$next_variable_three"
 
 # selection=$(printf "%s\n" "${options[@]}" | fzf --preview='

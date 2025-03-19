@@ -251,6 +251,31 @@ select_task module_list
 
 
 
+# list_tasks() {
+#     echo -e "\n${GRAYBG}${BLACK}Select a Module:${NC}"
+
+#     for item in "${tasks[@]}"; do
+#         echo -e "${LIGHT_BLUE}[$item]${NC}"
+#     done
+
+#     while true; do
+#         read -p "> " task_name
+
+#         for item in "${tasks[@]}"; do
+#             if [[ "$task_name" == "$item" ]]; then
+#                 selected_task="$task_name"
+#                 module_list=$(ansible-doc "$task_name" | awk '/OPTIONS \(= is mandatory\):/{flag=1; next} /ATTRIBUTES:/{flag=0} flag' | awk '/^-/{print $2}')
+#                 play_array=()
+#                 select_task module_list
+#                 return  # Exit the function immediately
+#             fi
+#         done
+
+#         echo -e "${LIGHT_RED}Error: Task '$task_name' not found. Try again.${NC}"
+#     done
+# }
+
+
 #fzf --preview 'echo "Currently on: {}"' --preview-window=down:5
 
 
