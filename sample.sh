@@ -47,6 +47,7 @@
 LIGHT_RED='\e[1;31m'
 NC='\e[0m'
 LRB='\e[1;32m'
+tput civis
 
 delete_file() {
     local filename="$1"  # Take filename as an argument
@@ -71,6 +72,8 @@ delete_file() {
 
 # Example usage:
 delete_file "yourfile"  # Replace with actual filename
+
+tput cnorm
 
 #ansible-doc "$next_variable_three"
 

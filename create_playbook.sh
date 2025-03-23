@@ -5,6 +5,7 @@ GRAY='\e[90m'
 BLACK='\e[30m'
 WHITE='\e[1;37m'
 GREEN='\e[32m'
+BLUE='\e[34m'
 LIGHT_BLUE='\033[94m'
 LIGHT_GREEN='\033[92m'
 LIGHT_RED='\033[91m'
@@ -14,6 +15,7 @@ BOLD='\e[1m'
 FAINT='\e[2m'
 LGB='\e[1;102m'
 LRB='\e[1;101m'
+LYB='\e[103m'
 GB='\e[42m'
 GRAYBG='\e[47m'
 NC='\033[0m'
@@ -54,6 +56,8 @@ fi
 create_file() {
     local file_name="$1"
 
+    tput civis # remove the cursor
+
     # Animation loop for 2 seconds
     end=$((SECONDS+2))
     while [ $SECONDS -lt $end ]; do
@@ -66,10 +70,15 @@ create_file() {
 
     # Clear the animation text and replace it with "FILE CREATED!"
     echo -ne "\r[$filename.yml] - ${LIGHT_GREEN}FILE CREATED! ●${NC}   \n"  # Overwrites old text
+
+    tput cnorm # restore the cursor
 }
 
 delete_file() {
     echo ""
+
+    tput civis # remove the cursor
+
     # Animation loop for 2 seconds
     end=$((SECONDS+2))
     while [ $SECONDS -lt $end ]; do
@@ -83,7 +92,9 @@ delete_file() {
     rm -f "$filename.yml"
 
     # Clear the animation text and replace it with "FILE DELETED!"
-    echo -ne "\r${LIGHT_RED}FILE ${WHITE}$filename.yml${NC}${LIGHT_RED} DELETED!${NC}      \n"  # Overwrites old text
+    echo -ne "\r${LIGHT_RED}${WHITE}$filename.yml${NC}${LIGHT_RED} DELETED!${NC}      \n"  # Overwrites old text
+
+    tput cnorm # restore the cursor
 }
 
 colorization() {
@@ -498,7 +509,7 @@ create_play() {
             create_task
             send_tasks
         elif [ "$add_task" == "no" ]; then
-            echo -e "\n${GRAYBG}${BLACK}[=== ${BLACK}PLAYBOOK '$filename.yml' ===]${NC}"
+            echo -e "\n${LYB}${BLACK}[=== PLAYBOOK '$filename.yml' ===]${NC}"
             break
         else
             echo -e "${LIGHT_RED}Incorrect answer!${NC}${FAINT} Type ${NC}'yes'${FAINT} or ${NC}'no'"
