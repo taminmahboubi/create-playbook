@@ -313,11 +313,22 @@
 
 
 # Create inventory file
+LIGHT_GREEN='\033[92m'
+LIGHT_RED='\033[91m'
+NC='\033[0m'
 
 # check if inventory file exists, if not, start 'create_inventory' function
 
-if [ -f "inventory" || -f "inventory.ini" ]; then
-    # do something here
+if [[ -f "inventory" || -f "inventory.ini" ]]; then
+    echo -e "File/: inventory - ${LIGHT_GREEN}EXISTS${NC}"
 else
+    echo -e "File/: inventory - ${LIGHT_RED}DOESN'T EXIST${NC}"
     # create the inventory
+    create_inventorys
 fi
+
+
+# create inventory 
+create_inventory() {
+    
+}
