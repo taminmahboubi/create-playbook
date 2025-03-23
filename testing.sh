@@ -313,32 +313,42 @@
 
 
 # Create inventory file
+GRAYBG='\e[47m'
 LIGHT_GREEN='\033[92m'
 LIGHT_RED='\033[91m'
+LIGHT_BLUE='\033[94m'
+BLACK='\e[30m'
 NC='\033[0m'
 
 group_name=""
-
+filename="fake_inventory"
 
 
 add_group() {
-    read -p "Enter [Group name]: " group_name
-    echo -e "[group_name]"
+    echo -en "Enter ${LIGHT_GREEN}[Group name]${NC}: "
+    read group_name
+    echo -e "[$group_name]" >> $filename
 }
 
 add_hostname(){
+    echo -en "\nAdd ${LIGHT_BLUE}host${NC}: "
+    read host_name
+    echo -e "$host_name" >> $filename
     while true; do
-        read -p "Add host:" host_name
-        echo -e "$host_name"
+        
+        echo -en "\nadd another ${LIGHT_BLUE}host${NC} to ${LIGHT_GREEN}[$group_name]${NC}? (yes/no): \n" 
+        read add_host
 
-        read -p "add another host to [$group_name]? (yes/no)" add_host
         if [[ "$add_host" == "yes" ]]; then
+            echo -en "\nAdd ${LIGHT_BLUE}host${NC}: "
+            read host_name
+            echo -e "$host_name" >> $filename
             continue
         elif [[ "$add_host" == "no" ]]; then
-            echo "" #empty space
+            echo "" >> $filename #empty space
             break
         else
-            echo "This is not a valid answer!"
+            echo -e "${LIGHT_RED}Invalid input! yes or no${NC}"
         fi
     done
     
@@ -346,18 +356,23 @@ add_hostname(){
 
 # create inventory 
 create_inventory() {
+    add_group
+
+    add_hostname
+
     while true; do
         
-        add_group
-
-        add_hostname
-        
-        read -p "would you like to add another? (yes/no)" finished
+        echo -en "\nwould you like to add another group? (yes/no): \n" 
+        read finished
 
         if [[ "$finished" == "yes" ]]; then
+            add_group
+            add_hostname
             continue
-        else
+        elif [[ "$finished" == "no" ]]; then
             break
+        else
+            echo -e "${LIGHT_RED}Invalid input! yes or no${NC}"
         fi
     done
 }
@@ -366,9 +381,17 @@ create_inventory() {
 # check if inventory file exists, if not, start 'create_inventory' function
 
 if [[ -f "inventorys" || -f "inventory.inis" ]]; then
-    echo -e "File/: inventory - ${LIGHT_GREEN}EXISTS${NC}"
+    echo -e "File/: inventory - ${LIGHT_GREEN}EXISTS${NC}\n"
+    cat $filename
 else
-    echo -e "File/: inventory - ${LIGHT_RED}DOESN'T EXIST${NC}"
+    echo -e "File/: inventory - ${LIGHT_RED}DOESN'T EXIST${NC}\n"
     # create the inventory
+    
+    touch $filename
     create_inventory
+
+    echo -e "\n${GRAYBG}${BLACK}Contents of inventory file:${NC} \n" 
+    cat "$filename"
+
+    rm "$filename"
 fi
