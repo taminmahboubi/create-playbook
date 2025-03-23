@@ -317,18 +317,58 @@ LIGHT_GREEN='\033[92m'
 LIGHT_RED='\033[91m'
 NC='\033[0m'
 
+group_name=""
+
+
+
+add_group() {
+    read -p "Enter [Group name]: " group_name
+    echo -e "[group_name]"
+}
+
+add_hostname(){
+    while true; do
+        read -p "Add host:" host_name
+        echo -e "$host_name"
+
+        read -p "add another host to [$group_name]? (yes/no)" add_host
+        if [[ "$add_host" == "yes" ]]; then
+            continue
+        elif [[ "$add_host" == "no" ]]; then
+            echo "" #empty space
+            break
+        else
+            echo "This is not a valid answer!"
+        fi
+    done
+    
+}
+
+# create inventory 
+create_inventory() {
+    while true; do
+        
+        add_group
+
+        add_hostname
+        
+        read -p "would you like to add another? (yes/no)" finished
+
+        if [[ "$finished" == "yes" ]]; then
+            continue
+        else
+            break
+        fi
+    done
+}
+
+
 # check if inventory file exists, if not, start 'create_inventory' function
 
-if [[ -f "inventory" || -f "inventory.ini" ]]; then
+if [[ -f "inventorys" || -f "inventory.inis" ]]; then
     echo -e "File/: inventory - ${LIGHT_GREEN}EXISTS${NC}"
 else
     echo -e "File/: inventory - ${LIGHT_RED}DOESN'T EXIST${NC}"
     # create the inventory
-    create_inventorys
+    create_inventory
 fi
-
-
-# create inventory 
-create_inventory() {
-    
-}
